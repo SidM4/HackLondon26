@@ -30,7 +30,7 @@ def query(prompt: str) -> str:
 
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-3.1-pro-preview",
         contents=prompt,
     )
     return response.text.strip()
