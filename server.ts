@@ -272,6 +272,25 @@ function mapPipelineReportToResponse(report: PipelineReport): AnalyseResponse {
 
 // ---------- Route handlers ----------
 
+async function handleAnalyse(
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+): Promise<void> {
+  const body = await readJsonBody(req);
+  const analyseReq = parseAnalyseRequest(body);
+
+  console.log(`[analyse] postcode=${analyseReq.postcode} work=${analyseReq.work_type}`);
+  const pipelineInput = mapRequestToPipelineInput(analyseReq);
+  const report = await runPipeline(pipelineInput);
+  const response = mapPipelineReportToResponse(report);
+
+  sendJson(res, 200, response);
+}
+
+function handleNotFound(res: http.ServerResponse): void {
+  sendJson(res, 404, { error: "Not found" });
+}
+
 // ---------- Error classification ----------
 
 function classifyError(raw: string): { status: number; error: string } {
@@ -320,35 +339,19 @@ function classifyError(raw: string): { status: number; error: string } {
   return { status: 500, error: "Something went wrong. Please try again." };
 }
 
-// ---------- HTTP Server ----------
-
-  console.log(`[analyse] postcode=${analyseReq.postcode} work=${analyseReq.work_type}`);
-  const pipelineInput = mapRequestToPipelineInput(analyseReq);
-  const report = await runPipeline(pipelineInput);
-  const response = mapPipelineReportToResponse(report);
-
-  sendJson(res, 200, response);
-}
-
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
-  const pathname = url.pathname;
-
-  // CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
 function handleError(res: http.ServerResponse, err: unknown): void {
   if (err instanceof HttpError) {
     sendJson(res, err.statusCode, { error: err.message, code: err.code });
     return;
   }
 
-  if (req.method === "POST" && pathname === "/analyse") {
-    try {
-      const body = await readBody(req);
-      const analyseReq: AnalyseRequest = JSON.parse(body);
+  const raw = (err as Error).message ?? String(err);
+  console.error("[server] Error:", raw);
+  const { status, error } = classifyError(raw);
+  sendJson(res, status, { error });
+}
+
+// ---------- HTTP Server ----------
 
 export function startServer(port: number = PORT): http.Server {
   const server = http.createServer(async (req, res) => {
@@ -360,58 +363,44 @@ export function startServer(port: number = PORT): http.Server {
       return;
     }
 
+    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+    const pathname = url.pathname;
+
     try {
-      if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
+      if (req.method === "GET" && (pathname === "/" || pathname === "/health")) {
         sendJson(res, 200, { status: "ok", service: "gemini-analysis-server" });
         return;
       }
 
-      if (req.method === "POST" && req.url === "/analyse") {
+      if (req.method === "GET" && pathname === "/diagnostics/connections") {
+        const diagnostics = await runConnectionDiagnostics();
+        sendJson(res, diagnostics.ok ? 200 : 503, diagnostics);
+        return;
+      }
+
+      if (req.method === "POST" && pathname === "/analyse") {
         await handleAnalyse(req, res);
         return;
       }
 
       handleNotFound(res);
     } catch (err) {
-      const raw = (err as Error).message ?? String(err);
-      console.error("[analyse] Error:", raw);
-
-      const { status, error } = classifyError(raw);
-      res.writeHead(status, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error }));
-    }
-    return;
-  }
-
-  if (req.method === "GET" && pathname === "/diagnostics/connections") {
-    try {
-      const diagnostics = await runConnectionDiagnostics();
-      res.writeHead(diagnostics.ok ? 200 : 503, {
-        "Content-Type": "application/json",
-      });
-      res.end(JSON.stringify(diagnostics));
-    } catch (err) {
-      const raw = (err as Error).message ?? String(err);
-      console.error("[diagnostics] Error:", raw);
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ ok: false, error: raw }));
+      handleError(res, err);
     }
   });
 
-  // Health check
-  if (req.method === "GET" && (pathname === "/" || pathname === "/health")) {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok" }));
-    return;
-  }
+  server.timeout = 0;
+  server.requestTimeout = 0;
+  server.headersTimeout = 0;
+  server.keepAliveTimeout = 0;
+
+  server.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+    console.log(`POST /analyse — run property analysis pipeline`);
+    console.log(`GET /diagnostics/connections — lightweight Gemini + Ibex connectivity checks`);
+  });
 
   return server;
 }
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`POST /analyse — run property analysis pipeline`);
-  console.log(
-    `GET /diagnostics/connections — lightweight Gemini + Ibex connectivity checks`
-  );
-});
+startServer(PORT);

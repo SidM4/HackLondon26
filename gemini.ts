@@ -14,6 +14,8 @@ import type { Content, Part } from "@google/genai";
 import { GEMINI_API_KEY as SECRET_API_KEY } from "./secrets";
 import { fetchBaseline } from "./ibex";
 import { ibexTools, dispatchIbexCall } from "./tools";
+
+const GEMINI_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes — large analyses can be slow
 // ---------- Pipeline types ----------
 
 export interface PipelineInput {
@@ -137,7 +139,7 @@ export async function testGeminiConnection(): Promise<GeminiConnectionCheck> {
 // ---------- Simple query (no Ibex) ----------
 
 export async function query(prompt: string): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const ai = new GoogleGenAI({ apiKey: getApiKey(), httpOptions: { timeout: GEMINI_TIMEOUT_MS } });
   const response = await ai.models.generateContent({
     model: "gemini-3.1-pro-preview",
     contents: prompt,
@@ -162,7 +164,7 @@ export async function queryWithIbex(
   prompt: string,
   opts: QueryOptions = {}
 ): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const ai = new GoogleGenAI({ apiKey: getApiKey(), httpOptions: { timeout: GEMINI_TIMEOUT_MS } });
   const maxRounds = opts.maxToolRounds ?? 5;
 
   // Step 1: Build system instruction with baseline Ibex data
@@ -461,7 +463,7 @@ export async function analyzeProperty(
   data: GatheredData,
   searchRadius: number
 ): Promise<PipelineReport> {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const ai = new GoogleGenAI({ apiKey: getApiKey(), httpOptions: { timeout: GEMINI_TIMEOUT_MS } });
 
   const systemPrompt = buildAnalysisSystemPrompt(input, data);
 

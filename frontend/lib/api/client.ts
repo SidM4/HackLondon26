@@ -20,7 +20,7 @@ const USE_MOCK =
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 120000,
+  timeout: 300000,
   headers: { 'Content-Type': 'application/json' },
 })
 
