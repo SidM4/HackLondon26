@@ -9,18 +9,14 @@ interface WorkTypeSelectorProps {
   disabled?: boolean
 }
 
-export function WorkTypeSelector({
-  value,
-  onChange,
-  disabled,
-}: WorkTypeSelectorProps) {
+export function WorkTypeSelector({ value, onChange, disabled }: WorkTypeSelectorProps) {
   return (
     <div>
       <label htmlFor="work-type" className="block text-sm font-semibold text-slate-blue mb-2">
         Type of work
       </label>
-      <div className="relative">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-blue/30 pointer-events-none">
+      <div className="field-shell relative pr-12">
+        <div className="field-icon">
           <Wrench className="h-4 w-4" />
         </div>
         <select
@@ -28,7 +24,7 @@ export function WorkTypeSelector({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          className="input-field pl-11 pr-10 py-3 appearance-none cursor-pointer"
+          className="field-control appearance-none cursor-pointer text-base sm:text-base"
           aria-describedby="work-type-hint"
         >
           <option value="">Select type of work...</option>
@@ -42,7 +38,7 @@ export function WorkTypeSelector({
             </optgroup>
           ))}
         </select>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-blue/30">
+        <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-blue/30">
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>

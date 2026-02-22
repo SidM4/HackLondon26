@@ -228,6 +228,38 @@ html {
   @apply w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-slate-blue placeholder-neutral-400 transition-all duration-200 focus:border-slate-blue/30 focus:outline-none focus:ring-2 focus:ring-slate-blue/10;
 }
 
+.field-shell {
+  @apply flex items-center gap-3 rounded-2xl border border-slate-blue/15 bg-white/90 px-3 py-2 shadow-[0_6px_24px_-18px_rgba(44,62,80,0.65)] transition-all duration-200;
+}
+
+.field-shell-compact {
+  @apply flex items-center gap-2 rounded-2xl border border-slate-blue/15 bg-white/90 px-2.5 py-2 shadow-[0_6px_20px_-16px_rgba(44,62,80,0.55)] transition-all duration-200;
+}
+
+.field-shell:focus-within {
+  @apply border-blueprint-teal/45 bg-white ring-4 ring-blueprint-teal/10;
+}
+
+.field-shell-compact:focus-within {
+  @apply border-blueprint-teal/45 bg-white ring-4 ring-blueprint-teal/10;
+}
+
+.field-icon {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-blue/[0.06] text-slate-blue/45;
+}
+
+.field-icon-compact {
+  @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-blue/[0.06] text-slate-blue/45;
+}
+
+.field-control {
+  @apply w-full border-0 bg-transparent p-0 text-base text-slate-blue placeholder-neutral-400 outline-none sm:text-base;
+}
+
+.field-control-compact {
+  @apply w-full border-0 bg-transparent p-0 text-base text-slate-blue placeholder-neutral-400 outline-none;
+}
+
 /* ============================================================
    LOADING SHIMMER
    ============================================================ */

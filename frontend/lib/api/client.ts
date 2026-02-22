@@ -52,12 +52,11 @@ export async function estimateROI(
 export async function analyse(
   body: AnalyseRequest
 ): Promise<AnalyseResponse> {
-  if (USE_MOCK) {
-    await delay(1000)
-    return { ...mockAnalyseResponse }
-  }
-  const { data } = await api.post<AnalyseResponse>('/analyse', body)
-  return data
+  // Temporary offline mode: disable backend/Ibex query for Analyse
+  // and always return local dummy data.
+  void body
+  await delay(1000)
+  return { ...mockAnalyseResponse }
 }
 
 function delay(ms: number): Promise<void> {

@@ -1,7 +1,7 @@
 'use client'
 
 import type { Precedent } from '@/lib/types/api'
-import { ExternalLink, CheckCircle, XCircle } from 'lucide-react'
+import { CheckCircle, MapPin, XCircle } from 'lucide-react'
 
 interface PrecedentItemProps {
   precedent: Precedent
@@ -11,6 +11,11 @@ interface PrecedentItemProps {
 
 export function PrecedentItem({ precedent, onSelect, compact }: PrecedentItemProps) {
   const isApproved = precedent.decision === 'approved'
+  const [workSummaryRaw, locationRaw] = precedent.title.split(/,\s+/, 2)
+  const workSummary = workSummaryRaw?.trim() || precedent.title
+  const location = locationRaw?.trim() || 'Location unavailable'
+  const formattedDate = formatDate(precedent.date)
+
   return (
     <article
       className={`group rounded-xl border bg-white transition-all duration-200 ${
@@ -32,9 +37,15 @@ export function PrecedentItem({ precedent, onSelect, compact }: PrecedentItemPro
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-slate-blue text-sm leading-snug">{precedent.title}</p>
-          <p className="mt-1 text-xs text-slate-blue/30">
-            {precedent.app_id} &middot; {precedent.date}
+          <p className="inline-flex items-center gap-1.5 text-xs text-slate-blue/45">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{location}</span>
+          </p>
+          <p className="mt-1 truncate font-semibold text-slate-blue text-sm leading-snug">
+            {workSummary}
+          </p>
+          <p className="mt-1 text-xs text-slate-blue/35">
+            {formattedDate}
           </p>
         </div>
         <span
@@ -48,18 +59,17 @@ export function PrecedentItem({ precedent, onSelect, compact }: PrecedentItemPro
           {precedent.decision}
         </span>
       </div>
-      {precedent.url && !compact && (
-        <a
-          href={precedent.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-blue/50 hover:text-slate-blue transition-colors link-underline"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ExternalLink className="h-3 w-3" />
-          View application
-        </a>
-      )}
     </article>
   )
+}
+
+function formatDate(date: string): string {
+  if (!date) return 'Date unavailable'
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) return date
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed)
 }
