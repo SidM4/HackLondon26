@@ -85,6 +85,55 @@ function getApiKey(): string {
   return apiKey;
 }
 
+export interface GeminiConnectionCheck {
+  ok: boolean;
+  latencyMs: number;
+  modelCount?: number;
+  sampleModels?: string[];
+  error?: string;
+}
+
+/**
+ * Lightweight Gemini connectivity check that does not run a normal prompt.
+ * It only hits the models listing endpoint to verify auth and service reachability.
+ */
+export async function testGeminiConnection(): Promise<GeminiConnectionCheck> {
+  const started = Date.now();
+  try {
+    const apiKey = getApiKey();
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
+        apiKey
+      )}`,
+      { method: "GET" }
+    );
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Gemini models endpoint returned ${res.status}: ${text}`);
+    }
+
+    const data = (await res.json()) as { models?: Array<{ name?: string }> };
+    const names = (data.models ?? [])
+      .map((m) => m.name)
+      .filter((name): name is string => Boolean(name))
+      .slice(0, 5);
+
+    return {
+      ok: true,
+      latencyMs: Date.now() - started,
+      modelCount: data.models?.length ?? 0,
+      sampleModels: names,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      latencyMs: Date.now() - started,
+      error: (err as Error).message ?? String(err),
+    };
+  }
+}
+
 // ---------- Simple query (no Ibex) ----------
 
 export async function query(prompt: string): Promise<string> {

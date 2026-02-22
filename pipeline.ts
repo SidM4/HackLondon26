@@ -6,15 +6,29 @@
  */
 
 import { lookupPostcode } from "./postcodes";
-import { fetchPipelineData, IbexResponse } from "./ibex";
+import {
+  fetchPipelineData,
+  IbexResponse,
+  testIbexConnection,
+  type IbexConnectionCheck,
+} from "./ibex";
 import {
   analyzeProperty,
   PipelineInput,
   PipelineReport,
   GatheredData,
+  testGeminiConnection,
+  type GeminiConnectionCheck,
 } from "./gemini";
 
 export type { PipelineInput, PipelineReport, GatheredData };
+
+export interface ConnectionDiagnostics {
+  ok: boolean;
+  gemini: GeminiConnectionCheck;
+  ibex: IbexConnectionCheck;
+  checkedAt: string;
+}
 
 // ---------- Core pipeline ----------
 
@@ -62,6 +76,20 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineReport>
 
   const report = await analyzeProperty(input, gatheredData, searchRadius);
   return report;
+}
+
+export async function runConnectionDiagnostics(): Promise<ConnectionDiagnostics> {
+  const [gemini, ibex] = await Promise.all([
+    testGeminiConnection(),
+    testIbexConnection(),
+  ]);
+
+  return {
+    ok: gemini.ok && ibex.ok,
+    gemini,
+    ibex,
+    checkedAt: new Date().toISOString(),
+  };
 }
 
 // ---------- Report printer ----------

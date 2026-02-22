@@ -57,6 +57,13 @@ export interface StatsRequest {
 
 export type IbexResponse = Record<string, unknown>;
 
+export interface IbexConnectionCheck {
+  ok: boolean;
+  latencyMs: number;
+  sampleApplicationCount?: number;
+  error?: string;
+}
+
 // ---------- Core HTTP helper ----------
 
 function getIbexToken(): string {
@@ -137,4 +144,34 @@ export async function fetchPipelineData(
       num_new_houses: true,
     },
   });
+}
+
+/**
+ * Lightweight Ibex connectivity check to avoid large data pulls.
+ * Uses a tiny radius and no extensions.
+ */
+export async function testIbexConnection(): Promise<IbexConnectionCheck> {
+  const started = Date.now();
+  try {
+    const result = await ibexSearch({
+      input: {
+        srid: 4326,
+        coordinates: [-0.1276, 51.5072],
+        radius: 10,
+      },
+      extensions: {},
+    });
+
+    return {
+      ok: true,
+      latencyMs: Date.now() - started,
+      sampleApplicationCount: Object.keys(result).length,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      latencyMs: Date.now() - started,
+      error: (err as Error).message ?? String(err),
+    };
+  }
 }
