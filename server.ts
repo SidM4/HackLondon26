@@ -5,7 +5,7 @@
  */
 
 import * as http from "http";
-import { runPipeline } from "./pipeline";
+import { runConnectionDiagnostics, runPipeline } from "./pipeline";
 import type { PipelineInput, PipelineReport } from "./gemini";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
@@ -156,6 +156,54 @@ function parseApprovalRate(rate: string): number {
   return 0.5;
 }
 
+// ---------- Error classification ----------
+
+function classifyError(raw: string): { status: number; error: string } {
+  // Invalid postcode (from postcodes.io 404)
+  if (raw.startsWith("Invalid postcode")) {
+    return { status: 400, error: raw };
+  }
+
+  // postcodes.io service errors
+  if (raw.includes("postcodes.io")) {
+    return { status: 502, error: "Postcode lookup service is unavailable. Please try again." };
+  }
+
+  // Ibex API errors
+  if (raw.includes("Ibex")) {
+    return { status: 502, error: "Planning data service (Ibex) is unavailable. Please try again." };
+  }
+
+  // Gemini rate limit / quota exhausted
+  if (raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota")) {
+    return {
+      status: 429,
+      error: "AI analysis rate limit reached. Please wait a minute and try again.",
+    };
+  }
+
+  // Gemini token limit (should be handled by fitToTokenBudget, but just in case)
+  if (raw.includes("input token count exceeds")) {
+    return {
+      status: 422,
+      error: "Too much planning data for this area to analyse. Try a more specific postcode.",
+    };
+  }
+
+  // Gemini API key / auth issues
+  if (raw.includes("API_KEY") || raw.includes("PERMISSION_DENIED")) {
+    return { status: 503, error: "AI service configuration error. Please contact support." };
+  }
+
+  // JSON parse failures (malformed Gemini response)
+  if (raw.includes("JSON") || raw.includes("Unexpected token")) {
+    return { status: 502, error: "AI returned an invalid response. Please try again." };
+  }
+
+  // Generic fallback
+  return { status: 500, error: "Something went wrong. Please try again." };
+}
+
 // ---------- HTTP Server ----------
 
 function readBody(req: http.IncomingMessage): Promise<string> {
@@ -168,9 +216,12 @@ function readBody(req: http.IncomingMessage): Promise<string> {
 }
 
 const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+  const pathname = url.pathname;
+
   // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
@@ -179,7 +230,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "POST" && req.url === "/analyse") {
+  if (req.method === "POST" && pathname === "/analyse") {
     try {
       const body = await readBody(req);
       const analyseReq: AnalyseRequest = JSON.parse(body);
@@ -195,15 +246,34 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(response));
     } catch (err) {
-      console.error("[analyse] Error:", (err as Error).message);
+      const raw = (err as Error).message ?? String(err);
+      console.error("[analyse] Error:", raw);
+
+      const { status, error } = classifyError(raw);
+      res.writeHead(status, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error }));
+    }
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/diagnostics/connections") {
+    try {
+      const diagnostics = await runConnectionDiagnostics();
+      res.writeHead(diagnostics.ok ? 200 : 503, {
+        "Content-Type": "application/json",
+      });
+      res.end(JSON.stringify(diagnostics));
+    } catch (err) {
+      const raw = (err as Error).message ?? String(err);
+      console.error("[diagnostics] Error:", raw);
       res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: (err as Error).message }));
+      res.end(JSON.stringify({ ok: false, error: raw }));
     }
     return;
   }
 
   // Health check
-  if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
+  if (req.method === "GET" && (pathname === "/" || pathname === "/health")) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok" }));
     return;
@@ -216,4 +286,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`POST /analyse — run property analysis pipeline`);
+  console.log(
+    `GET /diagnostics/connections — lightweight Gemini + Ibex connectivity checks`
+  );
 });

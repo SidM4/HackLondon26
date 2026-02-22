@@ -20,7 +20,7 @@ const USE_MOCK =
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 60000,
+  timeout: 120000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -56,8 +56,16 @@ export async function analyse(
     await delay(1000)
     return { ...mockAnalyseResponse }
   }
-  const { data } = await api.post<AnalyseResponse>('/analyse', body)
-  return data
+  try {
+    const { data } = await api.post<AnalyseResponse>('/analyse', body)
+    return data
+  } catch (err) {
+    // Extract the server's error message from the response body
+    if (axios.isAxiosError(err) && err.response?.data?.error) {
+      throw new Error(err.response.data.error)
+    }
+    throw err
+  }
 }
 
 function delay(ms: number): Promise<void> {
