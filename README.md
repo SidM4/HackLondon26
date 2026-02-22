@@ -34,3 +34,28 @@ reply = run_chat("Explain recursion in one sentence.")
 - **Flow**: User message → model responds with a function call → your code runs `on_model_response` → result is sent back → model returns final text.
 
 Edit `on_model_response` in `gemini_function_call.py` to log, persist, or forward responses as needed.
+
+---
+
+## Renovation Optimiser (Next.js)
+
+Single-page web app for planning approval probability and ROI. All frontend code lives in **`frontend/`**. Built with Next.js 14, Tailwind, Leaflet, Chart.js, and Zustand.
+
+### Run
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). In development with no backend, the app uses **mock data** so you can demo without an API.
+
+### Backend
+
+Set `NEXT_PUBLIC_API_BASE_URL` to your API root. Implement:
+
+- `POST /analyse` — request: `{ postcode, property_description, work_type }`
+- Optional: `POST /predict_planning`, `POST /estimate_roi` (see types)
+
+See `frontend/lib/types/api.ts` and the mock in `frontend/lib/mock/fixtures.ts` for contracts.
