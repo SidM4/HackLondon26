@@ -1,6 +1,7 @@
 'use client'
 
 import type { Precedent } from '@/lib/types/api'
+import { ExternalLink, CheckCircle, XCircle } from 'lucide-react'
 
 interface PrecedentItemProps {
   precedent: Precedent
@@ -12,7 +13,9 @@ export function PrecedentItem({ precedent, onSelect, compact }: PrecedentItemPro
   const isApproved = precedent.decision === 'approved'
   return (
     <article
-      className={`rounded-lg border border-neutral-200 bg-white ${compact ? 'p-3' : 'p-4'} ${onSelect ? 'cursor-pointer hover:border-neutral-300' : ''}`}
+      className={`group rounded-xl border bg-white transition-all duration-200 ${
+        compact ? 'p-3 border-neutral-100' : 'p-4 border-neutral-200 hover:shadow-card'
+      } ${onSelect ? 'cursor-pointer hover:border-slate-blue/20' : ''}`}
       onClick={onSelect}
       role={onSelect ? 'button' : undefined}
       tabIndex={onSelect ? 0 : undefined}
@@ -27,16 +30,21 @@ export function PrecedentItem({ precedent, onSelect, compact }: PrecedentItemPro
           : undefined
       }
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-neutral-900">{precedent.title}</p>
-          <p className="mt-0.5 text-xs text-neutral-500">
-            {precedent.app_id} · {precedent.date}
+          <p className="font-semibold text-slate-blue text-sm leading-snug">{precedent.title}</p>
+          <p className="mt-1 text-xs text-slate-blue/30">
+            {precedent.app_id} &middot; {precedent.date}
           </p>
         </div>
         <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${isApproved ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+          className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${
+            isApproved
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'bg-red-50 text-red-600'
+          }`}
         >
+          {isApproved ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
           {precedent.decision}
         </span>
       </div>
@@ -45,10 +53,11 @@ export function PrecedentItem({ precedent, onSelect, compact }: PrecedentItemPro
           href={precedent.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-block text-sm text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-400 rounded"
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-blue/50 hover:text-slate-blue transition-colors link-underline"
           onClick={(e) => e.stopPropagation()}
         >
-          View application →
+          <ExternalLink className="h-3 w-3" />
+          View application
         </a>
       )}
     </article>

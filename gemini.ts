@@ -280,13 +280,47 @@ const PIPELINE_REPORT_SCHEMA = {
   required: ["approvalLikelihood", "nearbyExamples", "suggestedImprovements", "costAndROI", "metadata"],
 };
 
+/**
+ * Truncate the applications array inside the Ibex response to at most `maxItems`,
+ * keeping the most recent applications (sorted by decided_date, then application_date).
+ * Returns a shallow copy so the original data is not mutated.
+ */
+function truncateApplications(
+  raw: Record<string, unknown>,
+  maxItems: number
+): Record<string, unknown> {
+  const copy = { ...raw };
+  for (const key of ["applications", "results"] as const) {
+    if (Array.isArray(copy[key])) {
+      const sorted = [...(copy[key] as Record<string, unknown>[])].sort((a, b) => {
+        const dateA = String(a.decided_date ?? a.application_date ?? "");
+        const dateB = String(b.decided_date ?? b.application_date ?? "");
+        return dateB.localeCompare(dateA); // newest first
+      });
+      copy[key] = sorted.slice(0, maxItems);
+      break;
+    }
+  }
+  return copy;
+}
+
 function buildAnalysisSystemPrompt(
   input: PipelineInput,
-  data: GatheredData
+  data: GatheredData,
+  maxApplications?: number
 ): string {
-  const planningDataSection = data.ibexError
-    ? `[Ibex data unavailable: ${data.ibexError}. Use your general knowledge of UK planning for this area.]`
-    : JSON.stringify(data.nearbyApplications, null, 2);
+  let planningDataSection: string;
+  if (data.ibexError) {
+    planningDataSection = `[Ibex data unavailable: ${data.ibexError}. Use your general knowledge of UK planning for this area.]`;
+  } else {
+    const apps = maxApplications !== undefined
+      ? truncateApplications(data.nearbyApplications, maxApplications)
+      : data.nearbyApplications;
+    // Use compact JSON when truncating to save tokens
+    planningDataSection = maxApplications !== undefined
+      ? JSON.stringify(apps)
+      : JSON.stringify(apps, null, 2);
+  }
 
   return `You are a UK property planning and home improvement analyst. Analyze the provided planning application data and property details to produce a structured assessment.
 
@@ -324,6 +358,18 @@ INSTRUCTIONS:
 5. metadata: Fill in postcode, council name, search radius (will be provided), number of applications in the data, and current timestamp.`;
 }
 
+function isTokenLimitError(err: unknown): boolean {
+  const msg = String(err instanceof Error ? err.message : err);
+  return msg.includes("input token count exceeds the maximum");
+}
+
+function countApplications(raw: Record<string, unknown>): number {
+  for (const key of ["applications", "results"]) {
+    if (Array.isArray(raw[key])) return (raw[key] as unknown[]).length;
+  }
+  return 0;
+}
+
 export async function analyzeProperty(
   input: PipelineInput,
   data: GatheredData,
@@ -331,30 +377,52 @@ export async function analyzeProperty(
 ): Promise<PipelineReport> {
   const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
-  const systemPrompt = buildAnalysisSystemPrompt(input, data);
-
   const userPrompt = `Analyze the planning approval likelihood for a ${input.plannedWork} on my ${input.propertyType} property at ${input.postcode}. ${input.propertyDescription}. Provide the full structured report with approval likelihood, nearby examples, suggested improvements, and cost/ROI estimates.`;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3.1-pro-preview",
-    contents: userPrompt,
-    config: {
-      systemInstruction: systemPrompt,
-      responseMimeType: "application/json",
-      responseSchema: PIPELINE_REPORT_SCHEMA,
-      temperature: 0.2,
-    },
-  });
+  // Start with all applications; on token-limit errors, halve until it fits.
+  const totalApps = countApplications(data.nearbyApplications);
+  let maxApps: number | undefined = undefined; // undefined = use all
+  const MAX_RETRIES = 5;
 
-  const parsed = JSON.parse(response.text ?? "{}") as PipelineReport;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const systemPrompt = buildAnalysisSystemPrompt(input, data, maxApps);
 
-  // Fill in metadata fields the pipeline controls
-  parsed.metadata.postcode = input.postcode;
-  parsed.metadata.council = data.postcodeInfo.admin_district;
-  parsed.metadata.searchRadiusMetres = searchRadius;
-  parsed.metadata.generatedAt = new Date().toISOString();
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: userPrompt,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          responseSchema: PIPELINE_REPORT_SCHEMA,
+          temperature: 0.2,
+        },
+      });
 
-  return parsed;
+      const parsed = JSON.parse(response.text ?? "{}") as PipelineReport;
+
+      // Fill in metadata fields the pipeline controls
+      parsed.metadata.postcode = input.postcode;
+      parsed.metadata.council = data.postcodeInfo.admin_district;
+      parsed.metadata.searchRadiusMetres = searchRadius;
+      parsed.metadata.generatedAt = new Date().toISOString();
+
+      return parsed;
+    } catch (err) {
+      if (!isTokenLimitError(err) || attempt === MAX_RETRIES) {
+        throw err;
+      }
+      // Halve the application count for the next attempt
+      const current = maxApps ?? totalApps;
+      maxApps = Math.max(Math.floor(current / 2), 5);
+      console.log(
+        `  → Token limit exceeded with ${current} applications, retrying with ${maxApps}...`
+      );
+    }
+  }
+
+  // Unreachable, but satisfies TypeScript
+  throw new Error("analyzeProperty: exceeded retry limit");
 }
 
 // CLI usage:

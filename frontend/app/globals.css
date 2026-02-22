@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --foreground: #0a0a0a;
+  --foreground: #2C3E50;
   --muted: #525252;
   --line: #e5e5e5;
-  --background: #fafafa;
-  --success: #16a34a;
+  --background: #ffffff;
+  --success: #1ABC9C;
   --caution: #ca8a04;
   --stop: #dc2626;
 }
@@ -15,4 +15,242 @@
 body {
   color: var(--foreground);
   background: var(--background);
+}
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================ */
+
+/* Tight-leading display headings (Bradford-inspired) */
+.heading-display {
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #1ABC9C 0%, #D35400 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   LINK & BUTTON INTERACTIONS (Bradford-style)
+   ============================================================ */
+
+/* Underline link that scales in from left */
+.link-underline {
+  position: relative;
+  display: inline-block;
+}
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.link-underline:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Button hover: icon shifts, elastic feel */
+.btn-primary {
+  @apply inline-flex items-center gap-3 rounded-xl px-8 py-4 text-base font-semibold text-white transition-all duration-300;
+  background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);
+}
+.btn-primary:hover {
+  transform: scale(1.02);
+  box-shadow: 0 16px 40px -8px rgba(211, 84, 0, 0.35);
+}
+.btn-primary:active {
+  transform: scale(0.965);
+}
+.btn-primary .btn-icon {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.btn-primary:hover .btn-icon {
+  transform: translateX(4px);
+}
+
+.btn-secondary {
+  @apply inline-flex items-center gap-3 rounded-xl px-8 py-4 text-base font-semibold transition-all duration-300 border-2;
+  border-color: var(--foreground);
+  color: var(--foreground);
+}
+.btn-secondary:hover {
+  background: var(--foreground);
+  color: white;
+  transform: scale(1.02);
+}
+.btn-secondary:active {
+  transform: scale(0.965);
+}
+
+/* ============================================================
+   EXPANDING PANELS (Bradford "4 drivers" inspired)
+   ============================================================ */
+.expand-panel {
+  flex: 1;
+  overflow: hidden;
+  transition: flex 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  cursor: pointer;
+}
+.expand-panel:hover,
+.expand-panel.active {
+  flex: 3;
+}
+.expand-panel .panel-content {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
+}
+.expand-panel:hover .panel-content,
+.expand-panel.active .panel-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================================
+   STAT PILL ANIMATION
+   ============================================================ */
+.stat-pill {
+  position: relative;
+  overflow: hidden;
+}
+.stat-pill::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: width 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.stat-pill.animate::after {
+  width: 100%;
+}
+
+/* ============================================================
+   SECTION BACKGROUNDS
+   ============================================================ */
+.section-warm {
+  background-color: #FFF8F3;
+}
+.section-cool {
+  background-color: #F0FDFB;
+}
+.section-neutral {
+  background-color: #F8FAFC;
+}
+.section-dark {
+  background-color: #2C3E50;
+  color: white;
+}
+
+/* ============================================================
+   ACCORDION
+   ============================================================ */
+.accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.accordion-content.open {
+  grid-template-rows: 1fr;
+}
+.accordion-content > div {
+  overflow: hidden;
+}
+.accordion-icon {
+  transition: transform 0.3s ease;
+}
+.accordion-icon.open {
+  transform: rotate(45deg);
+}
+
+/* ============================================================
+   IMAGE OVERLAY
+   ============================================================ */
+.image-overlay {
+  position: relative;
+}
+.image-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(44, 62, 80, 0.7) 100%);
+}
+
+/* ============================================================
+   SCROLL & SCROLLBAR
+   ============================================================ */
+html {
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(44, 62, 80, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(44, 62, 80, 0.3);
+}
+
+/* ============================================================
+   FORM UTILITIES
+   ============================================================ */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blueprint-teal/40 focus:ring-offset-2;
+}
+
+.input-field {
+  @apply w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-slate-blue placeholder-neutral-400 transition-all duration-200 focus:border-slate-blue/30 focus:outline-none focus:ring-2 focus:ring-slate-blue/10;
+}
+
+/* ============================================================
+   LOADING SHIMMER
+   ============================================================ */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(26, 188, 156, 0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* ============================================================
+   IMAGE PLACEHOLDERS (until real images are added)
+   ============================================================ */
+.img-placeholder {
+  background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 50%, #f0f4f8 100%);
+  background-size: 200% 200%;
+  animation: placeholder-shift 8s ease-in-out infinite;
+}
+
+@keyframes placeholder-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }

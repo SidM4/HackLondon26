@@ -1,39 +1,54 @@
 'use client'
 
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+import { motion } from 'framer-motion'
+
+const navLinks = [
+  { label: 'Features', href: '#features' },
+  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'Analyse', href: '#analyse' },
+]
 
 export function Nav() {
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <motion.header
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="fixed top-4 left-4 right-4 z-50"
+    >
       <nav
-        className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
+        className="mx-auto flex h-14 max-w-4xl items-center justify-between rounded-full bg-white/90 backdrop-blur-md px-2 pl-6 shadow-[0_2px_20px_rgba(0,0,0,0.08)]"
         aria-label="Main navigation"
       >
         <Link
           href="/"
-          className="flex items-center gap-2 font-medium text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 rounded"
+          className="font-semibold text-slate-blue text-lg tracking-tight"
         >
-          <span className="text-lg font-semibold tracking-tight">
-            Renovation Optimiser
-          </span>
+          MERIDIAN
         </Link>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2"
-            aria-label="Sign in"
-          >
-            Sign in
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2"
-            aria-label="Download demo report"
-          >
-            Demo report
-          </button>
+
+        <div className="hidden md:flex items-center gap-6">
+          {navLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-slate-blue/60 hover:text-slate-blue transition-colors duration-200"
+            >
+              {link.label}
+            </a>
+          ))}
         </div>
+
+        <a
+          href="#analyse"
+          className="group flex items-center gap-2 rounded-full bg-slate-blue px-5 py-2 text-sm font-medium text-white hover:bg-slate-blue/90 transition-all duration-300 active:scale-[0.965]"
+        >
+          <span>Get Started</span>
+          <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+        </a>
       </nav>
-    </header>
+    </motion.header>
   )
 }

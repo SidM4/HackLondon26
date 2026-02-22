@@ -1,20 +1,20 @@
 import type { Metadata } from 'next'
-import { Outfit } from 'next/font/google'
+import { Roboto } from 'next/font/google'
 import { Nav } from '@/components/Nav'
 import { Footer } from '@/components/Footer'
 import './globals.css'
 
-const outfit = Outfit({
+const roboto = Roboto({
   subsets: ['latin'],
-  weight: ['200', '300', '400', '500', '600'],
-  variable: '--font-outfit',
+  weight: ['100', '300', '400', '500', '700', '900'],
+  variable: '--font-roboto',
   display: 'swap',
 })
 
 export const metadata: Metadata = {
-  title: 'Renovation Optimiser',
+  title: 'Meridian | AI-Powered Planning Approval Predictions',
   description:
-    'Planning approval probability and ROI for your renovation. Evidence-based decisions.',
+    'Predict your renovation approval probability with AI. Backed by thousands of historical planning decisions, get instant insights and boost your chances.',
 }
 
 export default function RootLayout({
@@ -23,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={outfit.variable}>
-      <body className="min-h-screen antialiased font-sans bg-neutral-50 text-neutral-900">
+    <html lang="en" className={roboto.variable}>
+      <body className="min-h-screen antialiased font-sans bg-white text-slate-blue overflow-x-hidden">
         <Nav />
         {children}
         <Footer />

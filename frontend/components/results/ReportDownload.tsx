@@ -3,7 +3,7 @@
 import { useRef, useCallback } from 'react'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { jsPDF } from 'jspdf'
-import html2canvas from 'html2canvas'
+import { Download } from 'lucide-react'
 
 export function ReportDownload() {
   const reportRef = useRef<HTMLDivElement>(null)
@@ -21,7 +21,7 @@ export function ReportDownload() {
     // Header
     pdf.setFontSize(20)
     pdf.setFont('helvetica', 'bold')
-    pdf.text('Renovation Optimiser Report', margin, y)
+    pdf.text('Meridian Planning Report', margin, y)
     y += 10
 
     pdf.setFontSize(10)
@@ -110,20 +110,22 @@ export function ReportDownload() {
       footerY
     )
 
-    pdf.save('renovation-optimiser-report.pdf')
+    pdf.save('meridian-planning-report.pdf')
   }, [inputs, analyseResult])
 
   if (!analyseResult) return null
 
   return (
-    <div>
+    <div ref={reportRef}>
       <button
         type="button"
         onClick={handleDownload}
-        className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2"
+        className="group inline-flex items-center gap-3 rounded-xl border-2 border-slate-blue bg-slate-blue px-6 py-3 text-sm font-semibold text-white hover:bg-slate-blue/90 transition-all duration-300 active:scale-[0.965] focus-ring"
         aria-label="Download PDF report"
       >
-        Download report (PDF)
+        <Download className="h-4 w-4" />
+        Download Report
+        <span className="text-xs text-white/50 font-normal">PDF</span>
       </button>
     </div>
   )
