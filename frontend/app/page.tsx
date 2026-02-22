@@ -165,6 +165,85 @@ export default function Home() {
       </section>
 
       {/* ============================================================
+          POWERED BY — technology marquee
+          ============================================================ */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="bg-white rounded-3xl p-8 sm:p-10 lg:p-12 overflow-hidden"
+        >
+          <p className="text-center text-sm font-medium text-neutral-400 uppercase tracking-widest mb-8">
+            Powered by
+          </p>
+
+          {/* Marquee container */}
+          <div className="relative">
+            {/* Fade edges */}
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-r from-white to-transparent" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-l from-white to-transparent" />
+
+            <div className="flex animate-marquee w-max">
+              {[0, 1].map((copy) => (
+                <div key={copy} className="flex gap-6 px-3">
+                  {[
+                    {
+                      name: 'ElevenLabs',
+                      desc: 'AI Voice Synthesis',
+                      color: 'bg-slate-blue',
+                      accent: 'text-white',
+                    },
+                    {
+                      name: 'Google Gemini',
+                      desc: 'Multimodal AI Analysis',
+                      color: 'bg-copper',
+                      accent: 'text-white',
+                    },
+                    {
+                      name: 'IBEX API',
+                      desc: 'Planning Approval Data',
+                      color: 'bg-blueprint-teal',
+                      accent: 'text-white',
+                    },
+                    {
+                      name: 'ElevenLabs',
+                      desc: 'AI Voice Synthesis',
+                      color: 'bg-slate-blue',
+                      accent: 'text-white',
+                    },
+                    {
+                      name: 'Google Gemini',
+                      desc: 'Multimodal AI Analysis',
+                      color: 'bg-copper',
+                      accent: 'text-white',
+                    },
+                    {
+                      name: 'IBEX API',
+                      desc: 'Planning Approval Data',
+                      color: 'bg-blueprint-teal',
+                      accent: 'text-white',
+                    },
+                  ].map((tech, i) => (
+                    <div
+                      key={i}
+                      className={`${tech.color} rounded-2xl px-8 py-6 min-w-[220px] flex flex-col items-center text-center shrink-0 shadow-card`}
+                    >
+                      <p className={`text-lg font-semibold ${tech.accent}`}>
+                        {tech.name}
+                      </p>
+                      <p className="text-sm text-white/60 mt-1">{tech.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ============================================================
           VIDEO CARD — final CTA with background video
           ============================================================ */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8">
