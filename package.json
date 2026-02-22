@@ -1,0 +1,27 @@
+{
+  "name": "hacklondon26",
+  "version": "1.0.0",
+  "description": "LLM boilerplate that uses **Google Gemini** with **forced function calling**: the model is configured to call a function on every response.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SidM4/HackLondon26.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/SidM4/HackLondon26/issues"
+  },
+  "homepage": "https://github.com/SidM4/HackLondon26#readme",
+  "dependencies": {
+    "@google/genai": "^1.42.0",
+    "@types/node": "^25.3.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
