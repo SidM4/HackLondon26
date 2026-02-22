@@ -1,9 +1,89 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { motion, useScroll, useTransform, useAnimationFrame } from 'framer-motion'
 import { ArrowRight, TrendingUp, Lightbulb, ShieldCheck } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
+
+const TECHS = [
+  { name: 'ElevenLabs', desc: 'AI Video Generation', logo: '/logos/elevenlabs.svg', bg: '#000000' },
+  { name: 'Google Gemini', desc: 'Multimodal AI Analysis', logo: '/logos/gemini.svg', bg: 'linear-gradient(135deg, #4285F4 0%, #A855F7 100%)' },
+  { name: '', desc: 'Planning Approval Data', logo: '/logos/ibex.svg', bg: '#1a1f36' },
+]
+
+function PoweredByMarquee() {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const xPos = useRef(0)
+  const speed = useRef(50) // px/s
+  const targetSpeed = useRef(50)
+
+  const onHover = useCallback((hovering: boolean) => {
+    targetSpeed.current = hovering ? 0 : 50
+  }, [])
+
+  useAnimationFrame((_, delta) => {
+    if (!trackRef.current) return
+    // Smoothly ease current speed toward target (decelerate / accelerate)
+    speed.current += (targetSpeed.current - speed.current) * 0.03
+    xPos.current -= (delta / 1000) * speed.current
+    const halfWidth = trackRef.current.scrollWidth / 2
+    if (Math.abs(xPos.current) >= halfWidth) xPos.current += halfWidth
+    trackRef.current.style.transform = `translateX(${xPos.current}px)`
+  })
+
+  // Duplicate the list so the second copy creates the seamless loop
+  const items = [...TECHS, ...TECHS, ...TECHS, ...TECHS]
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="relative bg-white rounded-3xl py-8 sm:py-10 lg:py-12 overflow-hidden"
+      >
+        <p className="text-center text-sm font-medium text-neutral-400 uppercase tracking-widest mb-8">
+          Powered by
+        </p>
+
+        {/* Fade edges — positioned to the card edges (no horizontal padding on wrapper) */}
+        <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-20 z-10 bg-gradient-to-r from-white to-transparent rounded-l-3xl" />
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-20 z-10 bg-gradient-to-l from-white to-transparent rounded-r-3xl" />
+
+        {/* Marquee track */}
+        <div
+          onMouseEnter={() => onHover(true)}
+          onMouseLeave={() => onHover(false)}
+        >
+          <div ref={trackRef} className="flex w-max will-change-transform">
+            {items.map((tech, i) => (
+              <div key={i} className="px-3">
+                <div
+                  style={{ background: tech.bg }}
+                  className="rounded-2xl px-8 py-6 min-w-[220px] h-[130px] flex flex-col items-center justify-center text-center shrink-0 shadow-card"
+                >
+                  <Image
+                    src={tech.logo}
+                    alt={tech.name || tech.desc}
+                    width={120}
+                    height={40}
+                    className="h-8 w-auto object-contain mb-3"
+                  />
+                  {tech.name && (
+                    <p className="text-lg font-semibold text-white">{tech.name}</p>
+                  )}
+                  <p className="text-sm text-white/60 mt-1">{tech.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </section>
+  )
+}
 
 export default function Home() {
   const [mounted, setMounted] = useState(false)
@@ -163,6 +243,11 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+
+      {/* ============================================================
+          POWERED BY — technology marquee
+          ============================================================ */}
+      <PoweredByMarquee />
 
       {/* ============================================================
           VIDEO CARD — final CTA with background video
