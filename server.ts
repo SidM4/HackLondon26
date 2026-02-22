@@ -1,7 +1,9 @@
 /**
- * HTTP server that exposes the analysis pipeline as a REST API.
+ * Gemini-backed HTTP server for property planning analysis.
  * Run: npx tsx server.ts
- * Endpoint: POST /analyse
+ * Endpoints:
+ *   - GET /health
+ *   - POST /analyse
  */
 
 import * as http from "http";
@@ -9,8 +11,9 @@ import { runPipeline } from "./pipeline";
 import type { PipelineInput, PipelineReport } from "./gemini";
 
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
+const MAX_BODY_BYTES = 1_000_000;
 
-// ---------- Request / Response types (matches frontend) ----------
+// ---------- API contract (frontend-compatible) ----------
 
 interface AnalyseRequest {
   postcode: string;
@@ -48,13 +51,139 @@ interface AnalyseResponse {
   location_insights?: string;
 }
 
-// ---------- Mapping ----------
+// ---------- Errors ----------
+
+class HttpError extends Error {
+  statusCode: number;
+  code: string;
+
+  constructor(statusCode: number, code: string, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+    this.code = code;
+  }
+}
+
+// ---------- Utils ----------
+
+function sendJson(
+  res: http.ServerResponse,
+  statusCode: number,
+  payload: unknown
+): void {
+  res.writeHead(statusCode, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(payload));
+}
+
+function setCorsHeaders(res: http.ServerResponse): void {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+async function readJsonBody(req: http.IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+
+  for await (const chunk of req) {
+    const part = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += part.length;
+    if (total > MAX_BODY_BYTES) {
+      throw new HttpError(413, "payload_too_large", "Request body too large");
+    }
+    chunks.push(part);
+  }
+
+  const raw = Buffer.concat(chunks).toString("utf8").trim();
+  if (!raw) {
+    throw new HttpError(400, "invalid_json", "Request body is required");
+  }
+
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    throw new HttpError(400, "invalid_json", "Malformed JSON body");
+  }
+}
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+function asSafeString(v: unknown): string {
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function asNumberOrDefault(v: unknown, fallback: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(Math.max(v, min), max);
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+function parseApprovalRate(rate: string): number {
+  const match = rate.match(/(\d+)/);
+  if (match) return clamp(parseInt(match[1], 10) / 100, 0, 1);
+
+  const lower = rate.toLowerCase();
+  if (lower.includes("very high")) return 0.9;
+  if (lower.includes("high")) return 0.8;
+  if (lower.includes("medium")) return 0.6;
+  if (lower.includes("low")) return 0.4;
+  return 0.5;
+}
+
+// ---------- Validation & mapping ----------
+
+function parseAnalyseRequest(body: unknown): AnalyseRequest {
+  if (!isObject(body)) {
+    throw new HttpError(400, "invalid_request", "Request body must be a JSON object");
+  }
+
+  const postcode = asSafeString(body.postcode);
+  const workType = asSafeString(body.work_type);
+  const propertyDescription = body.property_description;
+
+  if (!postcode) {
+    throw new HttpError(400, "invalid_request", "postcode is required");
+  }
+  if (!workType) {
+    throw new HttpError(400, "invalid_request", "work_type is required");
+  }
+  if (!isObject(propertyDescription)) {
+    throw new HttpError(
+      400,
+      "invalid_request",
+      "property_description must be an object"
+    );
+  }
+
+  const propertyType = asSafeString(propertyDescription.property_type);
+  const bedrooms = asNumberOrDefault(propertyDescription.bedrooms, 0);
+  const bathrooms = asNumberOrDefault(propertyDescription.bathrooms, 0);
+  const otherDetails = asSafeString(propertyDescription.other_details);
+
+  return {
+    postcode,
+    work_type: workType,
+    property_description: {
+      property_type: propertyType,
+      bedrooms,
+      bathrooms,
+      other_details: otherDetails || undefined,
+    },
+  };
+}
 
 function mapRequestToPipelineInput(req: AnalyseRequest): PipelineInput {
-  // Map frontend work_type id to human-readable string
-  const workLabel = req.work_type.replace(/_/g, " ");
-
-  // Map frontend property_type to pipeline enum
   const typeMap: Record<string, PipelineInput["propertyType"]> = {
     house: "detached",
     detached: "detached",
@@ -67,73 +196,70 @@ function mapRequestToPipelineInput(req: AnalyseRequest): PipelineInput {
     bungalow: "bungalow",
     villa: "detached",
   };
-  const propType =
-    typeMap[req.property_description.property_type.toLowerCase()] ?? "other";
+
+  const rawType = req.property_description.property_type.toLowerCase();
+  const propertyType = typeMap[rawType] ?? "other";
+  const bedrooms = clamp(Math.round(req.property_description.bedrooms), 0, 20);
+  const bathrooms = clamp(Math.round(req.property_description.bathrooms), 0, 20);
+  const plannedWork = req.work_type.replace(/_/g, " ").trim();
 
   return {
     postcode: req.postcode,
     propertyDescription:
       req.property_description.other_details ||
-      `${req.property_description.property_type} with ${req.property_description.bedrooms} bedrooms`,
-    propertyType: propType,
-    bedrooms: req.property_description.bedrooms,
-    bathrooms: req.property_description.bathrooms,
-    plannedWork: workLabel,
+      `${req.property_description.property_type || "Property"} with ${bedrooms} bedrooms`,
+    propertyType,
+    bedrooms,
+    bathrooms,
+    plannedWork,
   };
 }
 
 function mapPipelineReportToResponse(report: PipelineReport): AnalyseResponse {
-  // Approval probability: pipeline returns 0-100, frontend expects 0-1
-  const approvalProbability = report.approvalLikelihood.percentage / 100;
-
-  // Confidence: map text to numeric interval
+  const approvalProbability = clamp(report.approvalLikelihood.percentage / 100, 0, 1);
   const confidenceMap: Record<string, number> = {
     high: 0.05,
     medium: 0.1,
     low: 0.15,
   };
-  const confidence =
-    confidenceMap[report.approvalLikelihood.confidence] ?? 0.1;
+  const confidence = confidenceMap[report.approvalLikelihood.confidence] ?? 0.1;
 
-  // Map nearby examples to precedents
-  const precedents: Precedent[] = report.nearbyExamples.map((ex, i) => ({
-    app_id: `IBEX-${i + 1}`,
-    decision: ex.decision.toLowerCase().includes("approv")
-      ? ("approved" as const)
-      : ("refused" as const),
-    date: ex.decisionDate || "Unknown",
-    title: `${ex.description}, ${ex.address}`,
+  const precedents: Precedent[] = report.nearbyExamples.map((example, idx) => ({
+    app_id: `IBEX-${idx + 1}`,
+    decision: example.decision.toLowerCase().includes("approv")
+      ? "approved"
+      : "refused",
+    date: example.decisionDate || "Unknown",
+    title: `${example.description}, ${example.address}`,
   }));
 
-  // Merge suggestedImprovements with costAndROI
-  const costMap = new Map<string, (typeof report.costAndROI)[0]>();
-  for (const c of report.costAndROI) {
-    costMap.set(c.improvementType.toLowerCase(), c);
+  const roiByType = new Map<string, (typeof report.costAndROI)[number]>();
+  for (const roi of report.costAndROI) {
+    roiByType.set(roi.improvementType.toLowerCase(), roi);
   }
 
-  const suggestedImprovements: SuggestedImprovement[] =
-    report.suggestedImprovements.map((s) => {
-      const cost = costMap.get(s.improvementType.toLowerCase());
-      const workType = s.improvementType
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_|_$/g, "");
+  const suggestedImprovements: SuggestedImprovement[] = report.suggestedImprovements.map(
+    (item) => {
+      const roi = roiByType.get(item.improvementType.toLowerCase());
+      const averageCost = roi
+        ? Math.round((roi.estimatedCostGBP.low + roi.estimatedCostGBP.high) / 2)
+        : 0;
+      const averageValue = roi
+        ? Math.round(
+            (roi.estimatedValueAddGBP.low + roi.estimatedValueAddGBP.high) / 2
+          )
+        : 0;
 
       return {
-        work_type: workType,
-        work_type_label: s.improvementType,
-        estimated_cost: cost
-          ? Math.round((cost.estimatedCostGBP.low + cost.estimatedCostGBP.high) / 2)
-          : 0,
-        value_added: cost
-          ? Math.round(
-              (cost.estimatedValueAddGBP.low + cost.estimatedValueAddGBP.high) / 2
-            )
-          : 0,
-        approval_probability: parseApprovalRate(s.approvalRate),
-        description: s.description,
+        work_type: slugify(item.improvementType),
+        work_type_label: item.improvementType,
+        estimated_cost: averageCost,
+        value_added: averageValue,
+        approval_probability: parseApprovalRate(item.approvalRate),
+        description: item.description,
       };
-    });
+    }
+  );
 
   return {
     approval_probability: approvalProbability,
@@ -144,76 +270,75 @@ function mapPipelineReportToResponse(report: PipelineReport): AnalyseResponse {
   };
 }
 
-function parseApprovalRate(rate: string): number {
-  // Extract number from strings like "85%", "High (85%)", "High"
-  const match = rate.match(/(\d+)/);
-  if (match) return parseInt(match[1], 10) / 100;
-  const lowerRate = rate.toLowerCase();
-  if (lowerRate.includes("very high")) return 0.9;
-  if (lowerRate.includes("high")) return 0.8;
-  if (lowerRate.includes("medium")) return 0.6;
-  if (lowerRate.includes("low")) return 0.4;
-  return 0.5;
+// ---------- Route handlers ----------
+
+async function handleAnalyse(
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+): Promise<void> {
+  const body = await readJsonBody(req);
+  const analyseReq = parseAnalyseRequest(body);
+
+  console.log(`[analyse] postcode=${analyseReq.postcode} work=${analyseReq.work_type}`);
+  const pipelineInput = mapRequestToPipelineInput(analyseReq);
+  const report = await runPipeline(pipelineInput);
+  const response = mapPipelineReportToResponse(report);
+
+  sendJson(res, 200, response);
 }
 
-// ---------- HTTP Server ----------
-
-function readBody(req: http.IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
-    req.on("end", () => resolve(Buffer.concat(chunks).toString()));
-    req.on("error", reject);
-  });
+function handleNotFound(res: http.ServerResponse): void {
+  sendJson(res, 404, { error: "Not found" });
 }
 
-const server = http.createServer(async (req, res) => {
-  // CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
+function handleError(res: http.ServerResponse, err: unknown): void {
+  if (err instanceof HttpError) {
+    sendJson(res, err.statusCode, { error: err.message, code: err.code });
     return;
   }
 
-  if (req.method === "POST" && req.url === "/analyse") {
-    try {
-      const body = await readBody(req);
-      const analyseReq: AnalyseRequest = JSON.parse(body);
+  const message = err instanceof Error ? err.message : "Internal server error";
+  sendJson(res, 500, { error: message, code: "internal_error" });
+}
 
-      console.log(
-        `[analyse] postcode=${analyseReq.postcode} work=${analyseReq.work_type}`
-      );
+// ---------- Server ----------
 
-      const pipelineInput = mapRequestToPipelineInput(analyseReq);
-      const report = await runPipeline(pipelineInput);
-      const response = mapPipelineReportToResponse(report);
+export function startServer(port: number = PORT): http.Server {
+  const server = http.createServer(async (req, res) => {
+    setCorsHeaders(res);
 
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(response));
-    } catch (err) {
-      console.error("[analyse] Error:", (err as Error).message);
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: (err as Error).message }));
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
     }
-    return;
-  }
 
-  // Health check
-  if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok" }));
-    return;
-  }
+    try {
+      if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
+        sendJson(res, 200, { status: "ok", service: "gemini-analysis-server" });
+        return;
+      }
 
-  res.writeHead(404, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: "Not found" }));
-});
+      if (req.method === "POST" && req.url === "/analyse") {
+        await handleAnalyse(req, res);
+        return;
+      }
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`POST /analyse — run property analysis pipeline`);
-});
+      handleNotFound(res);
+    } catch (err) {
+      console.error("[server] Error:", err);
+      handleError(res, err);
+    }
+  });
+
+  server.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+    console.log("POST /analyse — run Gemini + Ibex property analysis");
+  });
+
+  return server;
+}
+
+if (require.main === module) {
+  startServer();
+}

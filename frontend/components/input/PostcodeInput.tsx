@@ -8,18 +8,14 @@ interface PostcodeInputProps {
   disabled?: boolean
 }
 
-export function PostcodeInput({
-  value,
-  onChange,
-  disabled,
-}: PostcodeInputProps) {
+export function PostcodeInput({ value, onChange, disabled }: PostcodeInputProps) {
   return (
     <div>
       <label htmlFor="postcode" className="block text-sm font-semibold text-slate-blue mb-2">
         Postcode
       </label>
-      <div className="relative">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-blue/30">
+      <div className="field-shell">
+        <div className="field-icon">
           <MapPin className="h-4 w-4" />
         </div>
         <input
@@ -30,7 +26,7 @@ export function PostcodeInput({
           disabled={disabled}
           placeholder="e.g. SW1A 1AA"
           maxLength={10}
-          className="input-field pl-11 uppercase"
+          className="field-control uppercase"
           aria-describedby="postcode-hint"
         />
       </div>

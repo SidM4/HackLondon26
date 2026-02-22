@@ -24,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={roboto.variable}>
-      <body className="min-h-screen antialiased font-sans bg-white text-slate-blue overflow-x-hidden">
+      <body className="min-h-screen antialiased font-[var(--font-roboto)] bg-white text-slate-blue overflow-x-hidden">
         <Nav />
         {children}
         <Footer />
