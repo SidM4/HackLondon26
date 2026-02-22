@@ -96,39 +96,58 @@ export default function AnalysePage() {
           className="rounded-3xl bg-white p-6 sm:p-10 shadow-xl shadow-slate-blue/10 border border-neutral-200/50"
           aria-labelledby="input-heading"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-2 w-2 rounded-full bg-copper" />
-            <h2
-              id="input-heading"
-              className="text-xs font-bold uppercase tracking-[0.15em] text-slate-blue/30"
-            >
-              Project Details
-            </h2>
-          </div>
-
-          <InputForm />
-
-          <AnimatePresence>
-            {loading && (
+          <AnimatePresence mode="wait">
+            {loading ? (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-8"
+                key="loader"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
                 role="status"
               >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-2 w-2 rounded-full bg-copper animate-pulse" />
+                  <h2
+                    id="input-heading"
+                    className="text-xs font-bold uppercase tracking-[0.15em] text-slate-blue/30"
+                  >
+                    Generating Report
+                  </h2>
+                </div>
                 <HouseBuildingLoader />
               </motion.div>
-            )}
-            {error && (
+            ) : (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-8 rounded-2xl bg-red-50 p-5 border border-red-100"
-                role="alert"
+                key="form"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
               >
-                <p className="text-sm font-semibold text-red-600">{error}</p>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-2 w-2 rounded-full bg-copper" />
+                  <h2
+                    id="input-heading"
+                    className="text-xs font-bold uppercase tracking-[0.15em] text-slate-blue/30"
+                  >
+                    Project Details
+                  </h2>
+                </div>
+
+                <InputForm />
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-8 rounded-2xl bg-red-50 p-5 border border-red-100"
+                    role="alert"
+                  >
+                    <p className="text-sm font-semibold text-red-600">{error}</p>
+                  </motion.div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

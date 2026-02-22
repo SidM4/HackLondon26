@@ -39,13 +39,8 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineReport>
       searchRadius
     );
 
-    // Try to count results from the response
-    const data = nearbyApplications as any;
-    const appCount =
-      Array.isArray(data.applications) ? data.applications.length :
-      Array.isArray(data.results) ? data.results.length :
-      typeof data.total === "number" ? data.total :
-      "unknown";
+    // Count entries — Ibex returns { "<id>": { ...app }, ... }
+    const appCount = Object.keys(nearbyApplications).length;
     console.log(`  → ${appCount} applications found within ${searchRadius}m`);
   } catch (err) {
     ibexError = (err as Error).message;
