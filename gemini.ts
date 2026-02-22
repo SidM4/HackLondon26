@@ -251,6 +251,7 @@ export async function queryWithIbex(
   return (response.text ?? "").trim();
 }
 
+
 // ---------- Structured property analysis ----------
 
 const PIPELINE_REPORT_SCHEMA = {

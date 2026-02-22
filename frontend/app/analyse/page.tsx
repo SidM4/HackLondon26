@@ -27,132 +27,135 @@ export default function AnalysePage() {
   if (!mounted) return null
 
   return (
-    <main className="relative min-h-screen bg-neutral-100 overflow-hidden">
-      {/* ============================================================
-          HERO BANNER — dark slate-blue header with decorative orbs
-          ============================================================ */}
-      <section className="relative bg-slate-blue pt-28 pb-36 overflow-hidden">
-        {/* Decorative gradient orbs */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-copper/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blueprint-teal/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4" />
+    <main className="relative min-h-screen overflow-hidden bg-[#f2f5f8]">
+      <motion.div
+        className="pointer-events-none absolute -left-24 top-20 h-72 w-72 rounded-full bg-blueprint-teal/20 blur-3xl"
+        animate={{ x: [0, 22, 0], y: [0, -18, 0] }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="pointer-events-none absolute -right-20 top-0 h-80 w-80 rounded-full bg-copper/20 blur-3xl"
+        animate={{ x: [0, -24, 0], y: [0, 24, 0] }}
+        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
+      />
 
-        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+      <section className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-24 sm:px-6 sm:pt-28 lg:px-8">
+        <div className="grid gap-7 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <motion.aside
+            initial={{ opacity: 0, x: -24 }}
+            animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="rounded-[30px] bg-slate-blue p-7 text-white shadow-2xl shadow-slate-blue/20 lg:sticky lg:top-8"
           >
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white mb-8 transition-colors duration-200"
+              className="mb-8 inline-flex items-center gap-2 text-sm text-white/60 transition-colors duration-200 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Home
             </Link>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white leading-[1.1] tracking-tight">
-              Analyse your{' '}
-              <span className="text-copper">project.</span>
+            <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">
+              Project
+              <br />
+              Analysis
             </h1>
-            <p className="mt-5 text-lg text-white/50 max-w-xl font-light leading-relaxed">
-              Fill in the details below to generate your custom report backed
-              by historical planning data.
+            <p className="mt-4 text-base leading-relaxed text-white/65">
+              Complete the form to generate a planning report with approval
+              confidence, precedents, and improvement guidance.
             </p>
-          </motion.div>
+            <div className="mt-8 space-y-3">
+              {[
+                { icon: BarChart3, label: 'Approval Prediction' },
+                { icon: FileText, label: 'Local Precedents' },
+                { icon: Lightbulb, label: 'Smart Suggestions' },
+                { icon: Shield, label: 'Risk Assessment' },
+              ].map(({ icon: Icon, label }, index) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, x: -14 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 + index * 0.08, duration: 0.45 }}
+                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3.5 py-3 text-sm text-white/75"
+                >
+                  <Icon className="h-4 w-4 text-copper" />
+                  {label}
+                </motion.div>
+              ))}
+            </div>
+          </motion.aside>
 
-          {/* Feature pills */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+          <motion.section
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6, ease: 'easeOut' }}
-            className="mt-8 flex flex-wrap gap-3"
+            transition={{ delay: 0.18, duration: 0.62, ease: 'easeOut' }}
+            className="relative overflow-hidden rounded-[30px] border border-slate-blue/10 bg-white p-6 shadow-2xl shadow-slate-blue/10 sm:p-10"
+            aria-labelledby="input-heading"
           >
-            {[
-              { icon: BarChart3, label: 'Approval Prediction' },
-              { icon: FileText, label: 'Local Precedents' },
-              { icon: Lightbulb, label: 'Smart Suggestions' },
-              { icon: Shield, label: 'Risk Assessment' },
-            ].map(({ icon: Icon, label }) => (
-              <div
-                key={label}
-                className="inline-flex items-center gap-2 rounded-full bg-white/[0.08] backdrop-blur-sm px-4 py-2 text-sm text-white/60"
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </div>
-            ))}
-          </motion.div>
+            <motion.div
+              className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#1ABC9C_0%,#D35400_45%,#1ABC9C_100%)]"
+              animate={{ backgroundPosition: ['0% 0%', '120% 0%'] }}
+              transition={{ duration: 4.5, repeat: Infinity, ease: 'linear' }}
+              style={{ backgroundSize: '200% 100%' }}
+            />
+
+            <AnimatePresence mode="wait">
+              {loading ? (
+                <motion.div
+                  key="loader"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  role="status"
+                >
+                  <div className="mb-2 flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-copper animate-pulse" />
+                    <h2
+                      id="input-heading"
+                      className="text-xs font-bold uppercase tracking-[0.15em] text-slate-blue/30"
+                    >
+                      Generating Report
+                    </h2>
+                  </div>
+                  <HouseBuildingLoader />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 0.5 } }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="mb-6 flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-copper" />
+                    <h2
+                      id="input-heading"
+                      className="text-xs font-bold uppercase tracking-[0.15em] text-slate-blue/35"
+                    >
+                      Project Details
+                    </h2>
+                  </div>
+
+                  <InputForm />
+
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-8 rounded-2xl border border-red-100 bg-red-50 p-5"
+                      role="alert"
+                    >
+                      <p className="text-sm font-semibold text-red-600">{error}</p>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
         </div>
       </section>
-
-      {/* ============================================================
-          FORM CARD — overlaps the hero banner
-          ============================================================ */}
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 -mt-20 relative z-10">
-        <motion.section
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.7, ease: 'easeOut' }}
-          className="rounded-3xl bg-white p-6 sm:p-10 shadow-xl shadow-slate-blue/10 border border-neutral-200/50"
-          aria-labelledby="input-heading"
-        >
-          <AnimatePresence mode="wait">
-            {loading ? (
-              <motion.div
-                key="loader"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                role="status"
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-2 w-2 rounded-full bg-copper animate-pulse" />
-                  <h2
-                    id="input-heading"
-                    className="text-xs font-bold uppercase tracking-[0.15em] text-slate-blue/30"
-                  >
-                    Generating Report
-                  </h2>
-                </div>
-                <HouseBuildingLoader />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="form"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-2 w-2 rounded-full bg-copper" />
-                  <h2
-                    id="input-heading"
-                    className="text-xs font-bold uppercase tracking-[0.15em] text-slate-blue/30"
-                  >
-                    Project Details
-                  </h2>
-                </div>
-
-                <InputForm />
-
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-8 rounded-2xl bg-red-50 p-5 border border-red-100"
-                    role="alert"
-                  >
-                    <p className="text-sm font-semibold text-red-600">{error}</p>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.section>
-      </div>
 
       {/* ============================================================
           RESULTS AREA — staggered entrance with section divider
@@ -163,7 +166,7 @@ export default function AnalysePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 mt-10 pb-20"
+            className="mx-auto mt-2 max-w-6xl px-4 pb-20 sm:px-6 lg:px-8"
           >
             {/* Divider */}
             <motion.div
