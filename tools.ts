@@ -5,7 +5,8 @@
 
 import { Type } from "@google/genai";
 import type { FunctionDeclaration, FunctionCall } from "@google/genai";
-import { ibexSearch, ibexApplications, ibexStats, IbexExtension } from "./ibex";
+import { ibexSearch, ibexApplications, ibexStats, IbexExtensions, IbexExtensionKey } from "./ibex";
+import { lookupPostcode } from "./postcodes";
 
 // ---------- Tool declarations ----------
 
@@ -34,9 +35,9 @@ export const ibexTools: FunctionDeclaration[] = [
           type: Type.ARRAY,
           items: { type: Type.STRING },
           description:
-            "Optional data extensions: planning_appeals, headings_summaries, " +
-            "project_type, housing_units, documents, residential_breakdowns, " +
-            "floor_area, public_comments",
+            "Optional data extensions: appeals, heading, project_type, " +
+            "num_new_houses, document_metadata, proposed_unit_mix, " +
+            "proposed_floor_area, num_comments_received, centre_point",
         },
       },
       required: ["longitude", "latitude"],
@@ -82,6 +83,21 @@ export const ibexTools: FunctionDeclaration[] = [
       required: ["council_ids"],
     },
   },
+  {
+    name: "postcode_lookup",
+    description:
+      "Look up a UK postcode to get latitude, longitude, council, and region information.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        postcode: {
+          type: Type.STRING,
+          description: "UK postcode (e.g. 'SW1A 1AA', 'E1 7BN')",
+        },
+      },
+      required: ["postcode"],
+    },
+  },
 ];
 
 // ---------- Dispatcher ----------
@@ -100,7 +116,11 @@ export async function dispatchIbexCall(
             coordinates: [Number(args.longitude), Number(args.latitude)],
             radius: Number(args.radius ?? 500),
           },
-          extensions: (args.extensions as IbexExtension[]) ?? [],
+          extensions: Array.isArray(args.extensions)
+            ? Object.fromEntries(
+                (args.extensions as string[]).map((k) => [k, true])
+              ) as IbexExtensions
+            : undefined,
         });
         return { output: result };
       }
@@ -120,6 +140,10 @@ export async function dispatchIbexCall(
             council_ids: (args.council_ids as number[]) ?? [],
           },
         });
+        return { output: result };
+      }
+      case "postcode_lookup": {
+        const result = await lookupPostcode(String(args.postcode));
         return { output: result };
       }
       default:

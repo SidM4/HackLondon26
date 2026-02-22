@@ -9,15 +9,21 @@ const IBEX_BASE = "https://ibex.seractech.co.uk";
 
 // ---------- Types ----------
 
-export type IbexExtension =
-  | "planning_appeals"
-  | "headings_summaries"
+export type IbexExtensionKey =
+  | "appeals"
+  | "centre_point"
+  | "heading"
   | "project_type"
-  | "housing_units"
-  | "documents"
-  | "residential_breakdowns"
-  | "floor_area"
-  | "public_comments";
+  | "num_new_houses"
+  | "document_metadata"
+  | "proposed_unit_mix"
+  | "proposed_floor_area"
+  | "num_comments_received";
+
+export type IbexExtensions = Partial<Record<IbexExtensionKey, boolean>>;
+
+// Keep old type alias for tools.ts compatibility
+export type IbexExtension = IbexExtensionKey;
 
 export interface SearchInput {
   srid: number;
@@ -27,7 +33,7 @@ export interface SearchInput {
 
 export interface SearchRequest {
   input: SearchInput;
-  extensions?: IbexExtension[];
+  extensions?: IbexExtensions;
   filters?: Record<string, unknown>;
 }
 
@@ -108,7 +114,27 @@ export async function fetchBaseline(
 ): Promise<string> {
   const result = await ibexSearch({
     input: { srid: 4326, coordinates: [lng, lat], radius: radiusMetres },
-    extensions: ["headings_summaries", "project_type", "public_comments"],
+    extensions: { heading: true, project_type: true, num_comments_received: true },
   });
   return JSON.stringify(result, null, 2);
+}
+
+// ---------- Pipeline-specific fetch ----------
+
+export async function fetchPipelineData(
+  lng: number,
+  lat: number,
+  radiusMetres: number = 500
+): Promise<IbexResponse> {
+  return ibexSearch({
+    input: { srid: 4326, coordinates: [lng, lat], radius: radiusMetres },
+    extensions: {
+      heading: true,
+      project_type: true,
+      proposed_floor_area: true,
+      appeals: true,
+      num_comments_received: true,
+      num_new_houses: true,
+    },
+  });
 }
